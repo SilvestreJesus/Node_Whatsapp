@@ -23,11 +23,10 @@ const client = new Client({
     }
 });
 
-// EVENTO QR: Consola pequeña e imagen web
+// --- EVENTOS DE WHATSAPP ---
 client.on('qr', (qr) => {
     ultimoQR = qr; 
     console.log('--- NUEVO QR GENERADO ---');
-    // Genera el QR pequeño en la consola de Railway
     qrcode.generate(qr, { small: true });
     console.log('También puedes verlo en: /ver-qr');
 });
@@ -38,7 +37,14 @@ client.on('ready', () => {
     console.log('--- ¡WHATSAPP CONECTADO Y LISTO! ---');
 });
 
-// RUTA PARA VER EL QR COMO IMAGEN (Para escanear desde el celular)
+// --- RUTAS DEL SERVIDOR ---
+
+// 1. Ruta de estado
+app.get('/', (req, res) => {
+    res.send("Servidor Activo. Estado: " + (isReady ? "Conectado" : "Esperando QR"));
+});
+
+// 2. Ruta para ver el QR como imagen
 app.get('/ver-qr', (req, res) => {
     if (isReady) return res.send("WhatsApp ya está conectado.");
     if (!ultimoQR) return res.send("Generando QR... espera unos segundos y recarga.");
@@ -48,10 +54,27 @@ app.get('/ver-qr', (req, res) => {
     image.pipe(res);
 });
 
-app.get('/', (req, res) => {
-    res.send("Servidor Activo. Estado: " + (isReady ? "Conectado" : "Esperando QR"));
+// 3. RUTA PARA RECIBIR MENSAJES DESDE ANGULAR (IMPORTANTE: FUERA DEL LISTEN)
+app.post('/enviar', async (req, res) => {
+    const { numero, mensaje } = req.body;
+
+    if (!isReady) {
+        return res.status(500).json({ error: "WhatsApp no está conectado todavía" });
+    }
+
+    try {
+        const chatId = numero.includes('@c.us') ? numero : `${numero}@c.us`;
+        await client.sendMessage(chatId, mensaje);
+        
+        console.log(`Mensaje enviado a ${numero}`);
+        res.json({ success: true, message: "Mensaje enviado correctamente" });
+    } catch (error) {
+        console.error("Error enviando mensaje:", error);
+        res.status(500).json({ error: "Fallo al enviar mensaje" });
+    }
 });
 
+// --- INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor iniciado en puerto ${PORT}`);
