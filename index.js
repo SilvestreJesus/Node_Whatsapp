@@ -1,30 +1,48 @@
+const express = require('express');
+const cors = require('cors');
 const nodemailer = require('nodemailer');
 
-// Configuración del transporte de correo (SMTP)
+const app = express();
+
+// Configuración de CORS para que Angular (Vercel) pueda conectarse
+app.use(cors({
+    origin: ['https://factorfit.vercel.app', 'http://localhost:4200'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Aumentar el límite para recibir imágenes en Base64
+app.use(express.json({ limit: '50mb' }));
+
+// Configuración de Gmail con tus credenciales
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
-    secure: true, // true para puerto 465
+    secure: true, 
     auth: {
         user: "22690406@tecvalles.mx",
-        pass: "tkqx spuw rcsi qpcn" // Tu contraseña de aplicación
+        pass: "tkqx spuw rcsi qpcn" 
     }
 });
 
-// RUTA PARA ENVIAR CORREOS
+// Ruta principal para probar si el servidor vive
+app.get('/', (req, res) => {
+    res.send("Servidor de Correos Factor Fit - Activo");
+});
+
+// RUTA PARA ENVIAR CORREO
 app.post('/enviar-correo', async (req, res) => {
     const { emails, asunto, mensaje, imagen } = req.body;
 
     const mailOptions = {
         from: '"Factor Fit" <22690406@tecvalles.mx>',
-        to: emails.join(', '), // Lista de correos
+        to: emails.join(', '), 
         subject: asunto,
         text: mensaje,
         html: `<p>${mensaje.replace(/\n/g, '<br>')}</p>`,
         attachments: []
     };
 
-    // Si hay una imagen en Base64, la adjuntamos
     if (imagen) {
         mailOptions.attachments.push({
             filename: 'adjunto.png',
@@ -35,9 +53,15 @@ app.post('/enviar-correo', async (req, res) => {
 
     try {
         await transporter.sendMail(mailOptions);
+        console.log("Correo enviado exitosamente a:", emails);
         res.json({ success: true, message: "Correo enviado" });
     } catch (error) {
-        console.error("Error enviando mail:", error);
-        res.status(500).json({ error: "Error al enviar correo" });
+        console.error("Error en Nodemailer:", error);
+        res.status(500).json({ error: "No se pudo enviar el correo" });
     }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor de correos corriendo en puerto ${PORT}`);
 });
