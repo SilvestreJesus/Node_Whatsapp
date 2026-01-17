@@ -1,84 +1,43 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const express = require('express');
-const cors = require('cors');
-const qrImage = require('qr-image');
+const nodemailer = require('nodemailer');
 
-const app = express();
-app.use(express.json());
-app.use(cors());
-
-let ultimoQR = "";
-let isReady = false;
-
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: { 
-        headless: true,
-        protocolTimeout: 0,
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
-        ] 
+// Configuración del transporte de correo (SMTP)
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // true para puerto 465
+    auth: {
+        user: "22690406@tecvalles.mx",
+        pass: "tkqx spuw rcsi qpcn" // Tu contraseña de aplicación
     }
 });
 
-// --- EVENTOS DE WHATSAPP ---
-client.on('qr', (qr) => {
-    ultimoQR = qr; 
-    console.log('--- NUEVO QR GENERADO ---');
-    qrcode.generate(qr, { small: true });
-    console.log('También puedes verlo en: /ver-qr');
-});
+// RUTA PARA ENVIAR CORREOS
+app.post('/enviar-correo', async (req, res) => {
+    const { emails, asunto, mensaje, imagen } = req.body;
 
-client.on('ready', () => {
-    ultimoQR = ""; 
-    isReady = true;
-    console.log('--- ¡WHATSAPP CONECTADO Y LISTO! ---');
-});
+    const mailOptions = {
+        from: '"Factor Fit" <22690406@tecvalles.mx>',
+        to: emails.join(', '), // Lista de correos
+        subject: asunto,
+        text: mensaje,
+        html: `<p>${mensaje.replace(/\n/g, '<br>')}</p>`,
+        attachments: []
+    };
 
-// --- RUTAS DEL SERVIDOR ---
-
-// 1. Ruta de estado
-app.get('/', (req, res) => {
-    res.send("Servidor Activo. Estado: " + (isReady ? "Conectado" : "Esperando QR"));
-});
-
-// 2. Ruta para ver el QR como imagen
-app.get('/ver-qr', (req, res) => {
-    if (isReady) return res.send("WhatsApp ya está conectado.");
-    if (!ultimoQR) return res.send("Generando QR... espera unos segundos y recarga.");
-    
-    const image = qrImage.image(ultimoQR, { type: 'png', margin: 4 });
-    res.type('png');
-    image.pipe(res);
-});
-
-// 3. RUTA PARA RECIBIR MENSAJES DESDE ANGULAR (IMPORTANTE: FUERA DEL LISTEN)
-app.post('/enviar', async (req, res) => {
-    const { numero, mensaje } = req.body;
-
-    if (!isReady) {
-        return res.status(500).json({ error: "WhatsApp no está conectado todavía" });
+    // Si hay una imagen en Base64, la adjuntamos
+    if (imagen) {
+        mailOptions.attachments.push({
+            filename: 'adjunto.png',
+            content: imagen.split("base64,")[1],
+            encoding: 'base64'
+        });
     }
 
     try {
-        const chatId = numero.includes('@c.us') ? numero : `${numero}@c.us`;
-        await client.sendMessage(chatId, mensaje);
-        
-        console.log(`Mensaje enviado a ${numero}`);
-        res.json({ success: true, message: "Mensaje enviado correctamente" });
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "Correo enviado" });
     } catch (error) {
-        console.error("Error enviando mensaje:", error);
-        res.status(500).json({ error: "Fallo al enviar mensaje" });
+        console.error("Error enviando mail:", error);
+        res.status(500).json({ error: "Error al enviar correo" });
     }
-});
-
-// --- INICIO DEL SERVIDOR ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Servidor iniciado en puerto ${PORT}`);
-    client.initialize();
 });
