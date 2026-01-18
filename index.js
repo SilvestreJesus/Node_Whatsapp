@@ -18,14 +18,17 @@ app.use(express.json({ limit: '50mb' }));
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
-    secure: false, 
+    secure: false, // false para puerto 587 (usa STARTTLS)
     auth: {
         user: "22690406@tecvalles.mx",
         pass: "tkqx spuw rcsi qpcn" 
     },
     tls: {
-        rejectUnauthorized: false // Ayuda a evitar problemas de certificados en Railway
-    }
+        rejectUnauthorized: false // Evita errores de certificados en contenedores Docker
+    },
+    connectionTimeout: 20000, // 20 segundos de espera para conectar
+    greetingTimeout: 20000,   // 20 segundos de espera para el saludo SMTP
+    socketTimeout: 30000      // 30 segundos de inactividad
 });
 
 // Ruta principal para probar si el servidor vive
