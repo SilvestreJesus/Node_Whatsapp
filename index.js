@@ -17,11 +17,14 @@ app.use(express.json({ limit: '50mb' }));
 // Configuración de Gmail con tus credenciales
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true, 
+    port: 587,
+    secure: false, 
     auth: {
         user: "22690406@tecvalles.mx",
         pass: "tkqx spuw rcsi qpcn" 
+    },
+    tls: {
+        rejectUnauthorized: false // Ayuda a evitar problemas de certificados en Railway
     }
 });
 
