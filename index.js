@@ -17,18 +17,13 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 3. CONFIGURACIÓN DE GMAIL (Optimizada para Railway)
 const transporter = nodemailer.createTransport({
-    pool: true, // Mantiene la conexión abierta para mayor velocidad y evitar bloqueos
-    host: "smtp.gmail.com",
-    port: 465, // Puerto SSL seguro
-    secure: true, 
+    service: 'gmail', // Al usar 'service', Nodemailer ya conoce los puertos y hosts
     auth: {
         user: "22690406@tecvalles.mx",
         pass: "tkqx spuw rcsi qpcn" 
     },
     tls: {
-        // Obliga a reconocer el servidor de Google aunque el contenedor no tenga certificados actualizados
-        servername: 'smtp.gmail.com',
-        rejectUnauthorized: false
+        rejectUnauthorized: false // Ignora errores de certificado
     }
 });
 
